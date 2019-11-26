@@ -36,9 +36,10 @@ class Maze:
 
     # Reward values
     # TODO add terminal rewards
-    STEP_REWARD = 1
-    GOAL_REWARD = 10
-    DEAD_REWARD = 0
+    STEP_REWARD = 0
+    GOAL_REWARD = 1
+    DEAD_REWARD = -1
+    TERMINAL_REWARD = 0
     IMPOSSIBLE_REWARD = -100
 
     def __init__(self, maze, weights=None, random_rewards=False):
@@ -80,10 +81,12 @@ class Maze:
                             map[(pi, pj, mi, mj)] = s
                             s += 1
         # TODO add transition to win or dead is it needed
-        # states[s] = "WIN"
-        # s += 1
-        # states[s] = "DEAD"
-        # s += 1
+        states[s] = 'WIN'
+        map['WIN'] = s
+        s += 1
+        states[s] = 'DEAD'
+        map['DEAD'] = s
+        s += 1
         return states, map
 
     def __move(self, state, action, for_transition_prob=False):
@@ -103,12 +106,12 @@ class Maze:
         col = self.states[state][1] + self.actions[action][1]
         # For minotaur 
         # Play a random valid action
-        valid_minotaur_moves = self.__minotaur_actions(state)
+        valid_minotaur_moves = self.__minotaur_actions(state, cant_stay=True)
         minotaur_pos = random.choice(valid_minotaur_moves)
         # Is the future position an impossible one ?
         hitting_maze_walls = (row == -1) or (row == self.maze.shape[0]) or \
-            (col == -1) or (col == self.maze.shape[1]) or \
-            (self.maze[row, col] == 1)
+                             (col == -1) or (col == self.maze.shape[1]) or \
+                             (self.maze[row, col] == 1)
         # Based on the impossiblity check return the next state.
         
         if for_transition_prob:
@@ -123,19 +126,25 @@ class Maze:
                         [[self.states[state][2], self.states[state][3]]]
             else: 
                 return row, col, valid_minotaur_moves
-
+        # TODO sould we have win and dead?
+        if self.is_win(state):
+            return self.map['WIN']
+        if self.is_dead(state):
+            return self.map['DEAD']
         if hitting_maze_walls:
             return state
         else:
             return self.map[(row, col, minotaur_pos[0], minotaur_pos[1])]
 
-    def __minotaur_actions(self, state):
+    def __minotaur_actions(self, state, cant_stay=True):
         # Random action for minotaur
         pos = (self.states[state][2], self.states[state][3])
         valid_moves = []
-
         # Get all valid actions for the minotaur position
-        for action in self.actions.keys():
+        valid_actions = list(self.actions.keys())
+        if cant_stay and self.STAY in valid_actions:
+            valid_actions.remove(self.STAY)
+        for action in valid_actions:
             row = pos[0] + self.actions[action][0]
             col = pos[1] + self.actions[action][1]
             outside_maze = (row == -1) or (row == self.maze.shape[0]) or \
@@ -159,10 +168,23 @@ class Maze:
         # Note that the transitions are probabilistic based on minotaur's random move
         for s in range(self.n_states):
             for a in range(self.n_actions):
-                row, col, valid_minotaur_moves = self.__move(s, a, for_transition_prob=True)
-                for minotaur_pos in valid_minotaur_moves:
-                    next_s = self.map[(row, col, minotaur_pos[0], minotaur_pos[1])]
-                    transition_probabilities[next_s, s, a] = 1/len(valid_minotaur_moves)
+                if self.states[s] == 'WIN' or self.states[s] == 'DEAD':
+                    next_s = s # WIN/DEAD irrespective of action a
+                    transition_probabilities[next_s, s, a] = 1
+                # for s(Pxy==Mxy) and any a, new state is terminal state DEAD
+                # NOTE DEAD is first since we wont to avoid both agents at B as win
+                elif self.is_dead(s):
+                    next_s = self.map['DEAD']
+                    transition_probabilities[next_s, s, a] = 1
+                # for s(Pxy==Bxy) and any a, new state is terminal state WIN
+                elif self.is_win(s):
+                    next_s = self.map['WIN']
+                    transition_probabilities[next_s, s, a] = 1
+                else:
+                    row, col, valid_minotaur_moves = self.__move(s, a, for_transition_prob=True)
+                    for minotaur_pos in valid_minotaur_moves:
+                        next_s = self.map[(row, col, minotaur_pos[0], minotaur_pos[1])]
+                        transition_probabilities[next_s, s, a] = 1/len(valid_minotaur_moves)
 
         return transition_probabilities
 
@@ -174,31 +196,36 @@ class Maze:
         if weights is None:
             for s in range(self.n_states):
                 for a in range(self.n_actions):
+                    if self.states[s] == 'WIN' or self.states[s] == 'DEAD':
+                        next_s = s # WIN/DEAD irrespective of action a
+                        rewards[s,a] = self.TERMINAL_REWARD
+                        continue
                     next_s = self.__move(s, a)
                     # Reward for hitting a wall
                     if s == next_s and a != self.STAY:
                         rewards[s, a] = self.IMPOSSIBLE_REWARD
+                    # Reward for being in the terminal state
+                    # TODO probably not needed
+                    # Looping in WIN
+                    elif s == next_s and self.is_win(s):
+                        rewards[s, a] = self.TERMINAL_REWARD
+                    # TODO probably not needed
+                    # Looping in DEAD
+                    elif s == next_s and self.is_dead(s):
+                        rewards[s, a] = self.TERMINAL_REWARD     
                     # Reward for reaching the exit
-                    # Check if the player position is 2/win position
-                    elif s == next_s and self.maze[self.states[next_s][0:2]] == 2:
+                    # Check if the player position was at 2/win position while taking the action a
+                    elif self.is_win(s):
                         rewards[s, a] = self.GOAL_REWARD
-                    # TODO Reward for landing in the same cell as minotaur i.e being DEAD
-                    elif s == next_s and self.states[next_s][0:2] == self.states[next_s][2:4]:
+                    # Reward for landing in the same cell as minotaur i.e being DEAD
+                    # Check if the player position is equal to that of minotaur while taking the action a
+                    elif self.is_dead(s):
                         rewards[s, a] = self.DEAD_REWARD
+                    # TODO is s == next_s needed            
                     # Reward for taking a step to an empty cell that is not the exit
                     else:
                         rewards[s, a] = self.STEP_REWARD
 
-                    # # If there exists trapped cells with probability 0.5
-                    # if random_rewards and self.maze[self.states[next_s]] < 0:
-                    #     row, col = self.states[next_s]
-                    #     # With probability 0.5 the reward is
-                    #     r1 = (1 + abs(self.maze[row, col])) * rewards[s, a]
-                    #     # With probability 0.5 the reward is
-                    #     r2 = rewards[s, a]
-                    #     # The average reward
-                    #     rewards[s, a] = 0.5*r1 + 0.5*r2
-                    
         # If the weights are descrobed by a weight matrix
         else:
             for s in range(self.n_states):
@@ -209,6 +236,12 @@ class Maze:
                     rewards[s, a] = weights[i][j]
 
         return rewards
+
+    def is_win(self, s):
+        return (self.maze[self.states[s][0:2]] == 2) and not self.is_dead(s)  
+
+    def is_dead(self, s):
+        return self.states[s][0:2] == self.states[s][2:4]
 
     def simulate(self, start, policy, method):
         if method not in methods:
@@ -374,7 +407,6 @@ def value_iteration(env, gamma, epsilon):
 
 
 def draw_maze(maze):
-
     # Map a color to each cell in the maze
     col_map = {0: WHITE, 1: BLACK,
                2: LIGHT_GREEN, -6: LIGHT_RED, -1: LIGHT_RED}
@@ -427,7 +459,7 @@ def animate_solution(maze, path):
     fig = plt.figure(1, figsize=(cols, rows))
 
     # Remove the axis ticks and add title title
-    ax = plt.gca(projection='3d')
+    ax = plt.gca()
     ax.set_title('Policy simulation')
     ax.set_xticks([])
     ax.set_yticks([])
@@ -454,32 +486,49 @@ def animate_solution(maze, path):
 
     # Update the color at each frame
     for i in range(len(path)):
+
+        # Clear the prev illustration, if path[i] is same as path[i-1] then it is already changed! 
+        # Illustration of current status
+        if i > 0:
+            print(path[i])
+
+        # if path[i][0:2] != path[i-1][0:2]:
+            grid.get_celld()[(path[i-1][0:2])
+                            ].set_facecolor(col_map[maze[path[i-1][0:2]]])
+            grid.get_celld()[(path[i-1][0:2])].get_text().set_text('')
+        # if path[i][2:4] != path[i-1][2:4]:
+            grid.get_celld()[(path[i-1][2:4])
+                            ].set_facecolor(col_map[maze[path[i-1][2:4]]])
+            grid.get_celld()[(path[i-1][2:4])].get_text().set_text('')
+    
+
+        # Agent illustration
         grid.get_celld()[(path[i][0:2])].set_facecolor(LIGHT_ORANGE)
         grid.get_celld()[(path[i][0:2])].get_text().set_text('Player')
-
         grid.get_celld()[(path[i][2:4])].set_facecolor(LIGHT_PURPLE)
         grid.get_celld()[(path[i][2:4])].get_text().set_text('Minotaur')
+        # TODO remove show
+        # plt.show()
         
-        if i > 0:
-            if path[i] == path[i-1]:
-                grid.get_celld()[(path[i][0:2])].set_facecolor(LIGHT_GREEN)
-                grid.get_celld()[(path[i][0:2])].get_text().set_text(
-                    'Player is out')
-            else:
-                # TODO add stuff to display minotaur
-                grid.get_celld()[(path[i-1][0:2])
-                                 ].set_facecolor(col_map[maze[path[i-1][0:2]]])
-                grid.get_celld()[(path[i-1][0:2])].get_text().set_text('')
-
-                grid.get_celld()[(path[i-1][2:4])
-                                 ].set_facecolor(col_map[maze[path[i-1][2:4]]])
-                grid.get_celld()[(path[i-1][2:4])].get_text().set_text('')
-
-
+        # Position is the same and it is DEAD!
+        if path[i] == 'DEAD': 
+            # TODO remove this
+            print("DEAD")
+            grid.get_celld()[(path[i][0:2])].set_facecolor(LIGHT_RED)
+            grid.get_celld()[(path[i][0:2])].get_text().set_text('DEAD')
+            break # Since nothing changes
+        # Position is the same and it is WIN!
+        elif path[i] == 'WIN':
+            # TODO remove this
+            print("WIN")
+            grid.get_celld()[(path[i][0:2])].set_facecolor(LIGHT_GREEN)
+            grid.get_celld()[(path[i][0:2])].get_text().set_text('WIN')
+            break # Since nothing changes
+        
         display.display(fig)
         display.clear_output(wait=True)
         time.sleep(1)
-
+    
 if __name__ == '__main__':
     # Description of the maze as a numpy array
     maze = np.array([
