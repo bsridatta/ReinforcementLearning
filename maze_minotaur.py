@@ -1,8 +1,11 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import time
+import os
 import random
 from IPython import display
+from PIL import Image
+from mpl_toolkits.axes_grid1 import ImageGrid
 
 # Implemented methods
 methods = ['DynProg', 'ValIter']
@@ -35,17 +38,17 @@ class Maze:
     }
 
     # Reward values
-    # TODO add terminal rewards
     STEP_REWARD = 0
     GOAL_REWARD = 1
     DEAD_REWARD = -1
     TERMINAL_REWARD = 0
     IMPOSSIBLE_REWARD = -100
 
-    def __init__(self, maze, weights=None, random_rewards=False):
+    def __init__(self, maze, weights=None, random_rewards=False, minotaur_cant_stay=True):
         """ Constructor of the environment Maze.
         """
         self.maze = maze
+        self.minotaur_cant_stay = minotaur_cant_stay
         self.actions = self.__actions()
         self.states, self.map = self.__states()
         self.n_actions = len(self.actions)
@@ -80,7 +83,6 @@ class Maze:
                             states[s] = (pi, pj, mi, mj)
                             map[(pi, pj, mi, mj)] = s
                             s += 1
-        # TODO add transition to win or dead is it needed
         states[s] = 'WIN'
         map['WIN'] = s
         s += 1
@@ -102,11 +104,15 @@ class Maze:
         """
         # For the player
         # Compute the future position given current (state, action)
+        if self.states[state] == 'WIN' or self.is_win(state):
+            return self.map['WIN']
+        if self.states[state] == 'DEAD' or self.is_dead(state):
+            return self.map['DEAD']
         row = self.states[state][0] + self.actions[action][0]
         col = self.states[state][1] + self.actions[action][1]
         # For minotaur 
         # Play a random valid action
-        valid_minotaur_moves = self.__minotaur_actions(state, cant_stay=True)
+        valid_minotaur_moves = self.__minotaur_actions(state, cant_stay=self.minotaur_cant_stay)
         minotaur_pos = random.choice(valid_minotaur_moves)
         # Is the future position an impossible one ?
         hitting_maze_walls = (row == -1) or (row == self.maze.shape[0]) or \
@@ -126,11 +132,6 @@ class Maze:
                         [[self.states[state][2], self.states[state][3]]]
             else: 
                 return row, col, valid_minotaur_moves
-        # TODO sould we have win and dead?
-        if self.is_win(state):
-            return self.map['WIN']
-        if self.is_dead(state):
-            return self.map['DEAD']
         if hitting_maze_walls:
             return state
         else:
@@ -205,11 +206,9 @@ class Maze:
                     if s == next_s and a != self.STAY:
                         rewards[s, a] = self.IMPOSSIBLE_REWARD
                     # Reward for being in the terminal state
-                    # TODO probably not needed
                     # Looping in WIN
                     elif s == next_s and self.is_win(s):
                         rewards[s, a] = self.TERMINAL_REWARD
-                    # TODO probably not needed
                     # Looping in DEAD
                     elif s == next_s and self.is_dead(s):
                         rewards[s, a] = self.TERMINAL_REWARD     
@@ -221,7 +220,6 @@ class Maze:
                     # Check if the player position is equal to that of minotaur while taking the action a
                     elif self.is_dead(s):
                         rewards[s, a] = self.DEAD_REWARD
-                    # TODO is s == next_s needed            
                     # Reward for taking a step to an empty cell that is not the exit
                     else:
                         rewards[s, a] = self.STEP_REWARD
@@ -487,11 +485,10 @@ def animate_solution(maze, path):
     # Update the color at each frame
     for i in range(len(path)):
 
-        # Clear the prev illustration, if path[i] is same as path[i-1] then it is already changed! 
+        ax.set_title(f'\t \t \t \t  Policy simulation \t \t \t t {i+1} T {len(path)-1}'.expandtabs())
+        # First clear the prev illustration, if path[i] is same as path[i-1] then it is already changed! 
         # Illustration of current status
         if i > 0:
-            print(path[i])
-
         # if path[i][0:2] != path[i-1][0:2]:
             grid.get_celld()[(path[i-1][0:2])
                             ].set_facecolor(col_map[maze[path[i-1][0:2]]])
@@ -507,28 +504,28 @@ def animate_solution(maze, path):
         grid.get_celld()[(path[i][0:2])].get_text().set_text('Player')
         grid.get_celld()[(path[i][2:4])].set_facecolor(LIGHT_PURPLE)
         grid.get_celld()[(path[i][2:4])].get_text().set_text('Minotaur')
-        # TODO remove show
-        # plt.show()
-        
+       
         # Position is the same and it is DEAD!
-        if path[i] == 'DEAD': 
-            # TODO remove this
-            print("DEAD")
+        if path[i][0:2] == path[i][2:4]: 
             grid.get_celld()[(path[i][0:2])].set_facecolor(LIGHT_RED)
             grid.get_celld()[(path[i][0:2])].get_text().set_text('DEAD')
             break # Since nothing changes
         # Position is the same and it is WIN!
-        elif path[i] == 'WIN':
-            # TODO remove this
-            print("WIN")
+        elif maze[path[i][0:2]] == 2:
             grid.get_celld()[(path[i][0:2])].set_facecolor(LIGHT_GREEN)
             grid.get_celld()[(path[i][0:2])].get_text().set_text('WIN')
             break # Since nothing changes
         
         display.display(fig)
+        # Save figures
+        try:
+            os.makedirs(f'{os.getcwd()}/animation')
+        except:
+            fig.savefig(f"{os.getcwd()}/animation/move{i}.png")
+
         display.clear_output(wait=True)
         time.sleep(1)
-    
+
 if __name__ == '__main__':
     # Description of the maze as a numpy array
     maze = np.array([
@@ -544,7 +541,7 @@ if __name__ == '__main__':
     # 0 = empty cell
     # 1 = obstacle
     # 2 = exit of the Maze
-    env = Maze(maze)
+    env = Maze(maze, minotaur_cant_stay=False)
     # Finite horizon
     horizon = 20
     # Solve the MDP problem with dynamic programming 
@@ -555,3 +552,4 @@ if __name__ == '__main__':
     path = env.simulate(start, policy, method)
     print(path)
     animate_solution(maze, path)
+    
