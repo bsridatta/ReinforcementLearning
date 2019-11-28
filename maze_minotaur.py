@@ -485,7 +485,7 @@ def animate_solution(maze, path):
     # Update the color at each frame
     for i in range(len(path)):
 
-        ax.set_title(f'\t \t \t \t  Policy simulation \t \t \t t {i+1} T {len(path)-1}'.expandtabs())
+        ax.set_title(f'\t \t \t \t  Policy simulation \t \t \t t {i} T {len(path)-1}'.expandtabs())
         # First clear the prev illustration, if path[i] is same as path[i-1] then it is already changed! 
         # Illustration of current status
         if i > 0:
@@ -525,8 +525,13 @@ def animate_solution(maze, path):
 
         display.clear_output(wait=True)
         time.sleep(1)
-
+    # Save figures
+    try:
+        os.makedirs(f'{os.getcwd()}/animation')
+    except:
+        fig.savefig(f"{os.getcwd()}/animation/move_last.png")
 if __name__ == '__main__':
+    
     # Description of the maze as a numpy array
     maze = np.array([
         [ 0,  0,  1,  0,  0,  0,  0,  0],
