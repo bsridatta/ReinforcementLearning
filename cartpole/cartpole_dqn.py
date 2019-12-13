@@ -81,7 +81,7 @@ class DQNAgent:
         max_a = np.argmax(Q)
         action_probs = np.dot([1]*self.action_size, \
                        self.epsilon/self.action_size)
-        action_probs[max_a] += 1 - self.epsilon
+        action_probs[max_a] += (1 - self.epsilon)
         action = np.random.choice(range(0,self.action_size), p=action_probs)
         return action
 
@@ -106,7 +106,6 @@ class DQNAgent:
             reward.append(mini_batch[i][2]) #Store r(i)
             update_target[i] = mini_batch[i][3] #Allocate s'(i) for the target network array from iteration i in the batch
             done.append(mini_batch[i][4])  #Store done(i)
-
         target = self.model.predict(update_input) #Generate target values for training the inner loop network using the network model
         target_val = self.target_model.predict(update_target) #Generate the target values for training the outer loop target network
 
@@ -121,7 +120,7 @@ class DQNAgent:
                 target[i][action[i]] = reward[i]
             else:
                 target[i][action[i]] = reward[i] + \
-                self.discount_factor * np.argmax(target_val[i])
+                self.discount_factor * np.max(target_val[i])
 
         #Train the inner loop network
         self.model.fit(update_input, target, batch_size=self.batch_size,
