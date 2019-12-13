@@ -123,7 +123,7 @@ class DQNAgent:
     #Plots the score per episode as well as the maximum q value per episode, averaged over precollected states.
     def log_data(self, episodes, scores, max_q_mean):
 
-        name = f'_layers_{self.layers}' 
+        name = f'_lr_{self.lr}' 
 
         pylab.figure(0)
         pylab.plot(episodes, max_q_mean, 'b')
