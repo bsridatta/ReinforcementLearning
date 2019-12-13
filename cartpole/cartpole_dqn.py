@@ -35,6 +35,8 @@ class DQNAgent:
         self.train_start = 1000 #Fixed
         self.target_update_frequency = hparams.frequency
         self.neurons = hparams.neurons
+        self.layers = hparams.layers
+
         #Number of test states for Q value plots
         self.test_state_no = 10000
 
@@ -54,6 +56,11 @@ class DQNAgent:
         model = Sequential()
         model.add(Dense(self.neurons, input_dim=self.state_size, activation='relu',
                         kernel_initializer='he_uniform'))
+        
+        for _ in range(self.layers-1):
+            model.add(Dense(self.neurons, activation='relu',
+                            kernel_initializer='he_uniform'))
+
         model.add(Dense(self.action_size, activation='linear',
                         kernel_initializer='he_uniform'))
         model.summary()
@@ -116,7 +123,7 @@ class DQNAgent:
     #Plots the score per episode as well as the maximum q value per episode, averaged over precollected states.
     def log_data(self, episodes, scores, max_q_mean):
 
-        name = f'_neurons_{self.neurons}' 
+        name = f'_layers_{self.layers}' 
 
         pylab.figure(0)
         pylab.plot(episodes, max_q_mean, 'b')
