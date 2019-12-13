@@ -9,9 +9,8 @@ from collections import deque
 from keras.layers import Dense
 from keras.optimizers import Adam
 from keras.models import Sequential
-from keras.callbacks import tensorboard_v1
 
-EPISODES = 1000 #Maximum number of episodes
+EPISODES = 10 #Maximum number of episodes
 
 #DQN Agent for the Cartpole
 #Q function approximation with NN, experience replay, and target network
@@ -24,8 +23,6 @@ class DQNAgent:
         #Get size of state and action
         self.state_size = state_size
         self.action_size = action_size
-
-       # Modify here
 
         #Set hyper parameters for the DQN. Do not adjust those labeled as Fixed.
         self.discount_factor = 0.95
@@ -51,10 +48,6 @@ class DQNAgent:
 
     #Approximate Q function using Neural Network
     #State is the input and the Q Values are the output.
-###############################################################################
-###############################################################################
-        #Edit the Neural Network model here
-        #Tip: Consult https://keras.io/getting-started/sequential-model-guide/
     def build_model(self):
         model = Sequential()
         model.add(Dense(16, input_dim=self.state_size, activation='relu',
@@ -62,14 +55,8 @@ class DQNAgent:
         model.add(Dense(self.action_size, activation='linear',
                         kernel_initializer='he_uniform'))
         model.summary()
-
-        # tb = tensorboard_v1.TensorBoard(log_dir='./logs', histogram_freq=0, batch_size=32, write_graph=True, write_grads=False, write_images=False, embeddings_freq=0, embeddings_layer_names=None, embeddings_metadata=None, embeddings_data=None, update_freq='epoch')
-
-
         model.compile(loss='mse', optimizer=Adam(lr=self.learning_rate))
         return model
-###############################################################################
-###############################################################################
 
     #After some time interval update the target model to be same with model
     def update_target_model(self):
@@ -106,16 +93,12 @@ class DQNAgent:
             reward.append(mini_batch[i][2]) #Store r(i)
             update_target[i] = mini_batch[i][3] #Allocate s'(i) for the target network array from iteration i in the batch
             done.append(mini_batch[i][4])  #Store done(i)
+
         target = self.model.predict(update_input) #Generate target values for training the inner loop network using the network model
         target_val = self.target_model.predict(update_target) #Generate the target values for training the outer loop target network
 
         #Q Learning: get maximum Q value at s' from target network
-###############################################################################
-###############################################################################
-        #Insert your Q-learning code here
-        #Tip 1: Observe that the Q-values are stored in the variable target
-        #Tip 2: What is the Q-value of the action taken at the last state of the episode?
-        for i in range(self.batch_size): #For every batch
+        for i in range(self.batch_size): #For each in batch
             if done[i]:
                 target[i][action[i]] = reward[i]
             else:
@@ -123,24 +106,28 @@ class DQNAgent:
                 self.discount_factor * np.max(target_val[i])
 
         #Train the inner loop network
-        self.model.fit(update_input, target, batch_size=self.batch_size,
+        self.model.fit(update_input, target,
+                       batch_size=self.batch_size,
                        epochs=1, verbose=0)
         return
 
     #Plots the score per episode as well as the maximum q value per episode, averaged over precollected states.
-    def plot_data(self, episodes, scores, max_q_mean):
+    def log_data(self, episodes, scores, max_q_mean):
         pylab.figure(0)
         pylab.plot(episodes, max_q_mean, 'b')
         pylab.xlabel("Episodes")
         pylab.ylabel("Average Q Value")
         pylab.savefig(f"cartpole/plots/qvalues{time()}.png")
-
+        np.savez(f"cartpole/pickles/qvalues{time()}.npz", max_q_mean)
 
         pylab.figure(1)
         pylab.plot(episodes, scores, 'b')
         pylab.xlabel("Episodes")
         pylab.ylabel("Score")
         pylab.savefig(f"cartpole/plots/scores{time()}.png")
+        np.savez(f"cartpole/pickles/scores{time()}.npz", scores)
+
+        h_params = []
 
 if __name__ == "__main__":
     #For CartPole-v0, maximum episode length is 200
@@ -215,6 +202,6 @@ if __name__ == "__main__":
                 if agent.check_solve:
                     if np.mean(scores[-min(100, len(scores)):]) >= 195:
                         print("solved after", e-100, "episodes")
-                        agent.plot_data(episodes,scores,max_q_mean[:e+1])
+                        agent.log_data(episodes,scores,max_q_mean[:e+1])
                         sys.exit()
-    agent.plot_data(episodes,scores,max_q_mean)
+    agent.log_data(episodes,scores,max_q_mean)
