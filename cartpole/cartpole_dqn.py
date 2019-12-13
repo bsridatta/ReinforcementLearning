@@ -9,6 +9,7 @@ from collections import deque
 from keras.layers import Dense
 from keras.optimizers import Adam
 from keras.models import Sequential
+from keras.callbacks import tensorboard_v1
 
 EPISODES = 1000 #Maximum number of episodes
 
@@ -61,6 +62,10 @@ class DQNAgent:
         model.add(Dense(self.action_size, activation='linear',
                         kernel_initializer='he_uniform'))
         model.summary()
+
+        # tb = tensorboard_v1.TensorBoard(log_dir='./logs', histogram_freq=0, batch_size=32, write_graph=True, write_grads=False, write_images=False, embeddings_freq=0, embeddings_layer_names=None, embeddings_metadata=None, embeddings_data=None, update_freq='epoch')
+
+
         model.compile(loss='mse', optimizer=Adam(lr=self.learning_rate))
         return model
 ###############################################################################
@@ -111,7 +116,7 @@ class DQNAgent:
         #Insert your Q-learning code here
         #Tip 1: Observe that the Q-values are stored in the variable target
         #Tip 2: What is the Q-value of the action taken at the last state of the episode?
-        for i in range(self.batch_size): #For every sample in the batch
+        for i in range(self.batch_size): #For every batch
             if done[i]:
                 target[i][action[i]] = reward[i]
             else:
@@ -130,6 +135,7 @@ class DQNAgent:
         pylab.xlabel("Episodes")
         pylab.ylabel("Average Q Value")
         pylab.savefig(f"cartpole/plots/qvalues{time()}.png")
+
 
         pylab.figure(1)
         pylab.plot(episodes, scores, 'b')

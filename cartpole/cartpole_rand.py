@@ -128,6 +128,7 @@ class DQNAgent:
         pylab.xlabel("Episodes")
         pylab.ylabel("Average Q Value")
         pylab.savefig(f"cartpole/plots/qvalues{time()}.png")
+        
 
         pylab.figure(1)
         pylab.plot(episodes, scores, 'b')
