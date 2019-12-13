@@ -115,19 +115,22 @@ class DQNAgent:
 
     #Plots the score per episode as well as the maximum q value per episode, averaged over precollected states.
     def log_data(self, episodes, scores, max_q_mean):
+
+        name = f'neurons: {self.neurons}' 
+
         pylab.figure(0)
         pylab.plot(episodes, max_q_mean, 'b')
         pylab.xlabel("Episodes")
         pylab.ylabel("Average Q Value")
-        pylab.savefig(f"cartpole/plots/qvalues{time()}.png")
-        np.savez(f"cartpole/pickles/qvalues{time()}.npz", max_q_mean)
+        pylab.savefig(f"cartpole/plots/qvalues{name}.png")
+        np.savez(f"cartpole/pickles/qvalues{name}.npz", max_q_mean)
 
         pylab.figure(1)
         pylab.plot(episodes, scores, 'b')
         pylab.xlabel("Episodes")
         pylab.ylabel("Score")
-        pylab.savefig(f"cartpole/plots/scores{time()}.png")
-        np.savez(f"cartpole/pickles/scores{time()}.npz", scores)
+        pylab.savefig(f"cartpole/plots/scores{name}.png")
+        np.savez(f"cartpole/pickles/scores{name}.npz", scores)
 
 if __name__ == "__main__":
     
@@ -143,7 +146,7 @@ if __name__ == "__main__":
     parser.add_argument("--frequency", type=int, default=1)
 
     hparams = parser.parse_args()
-    
+
     #For CartPole-v0, maximum episode length is 200
     env = gym.make('CartPole-v0') #Generate Cartpole-v0 environment object from the gym library
     #Get state and action sizes from the environment
