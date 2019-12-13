@@ -3,6 +3,8 @@ import gym
 import pylab
 import random
 import numpy as np
+
+from time import time
 from collections import deque
 from keras.layers import Dense
 from keras.optimizers import Adam
@@ -15,7 +17,7 @@ EPISODES = 1000 #Maximum number of episodes
 class DQNAgent:
     #Constructor for the agent (invoked when DQN is first called in main)
     def __init__(self, state_size, action_size):
-        self.check_solve = False	#If True, stop if you satisfy solution confition
+        self.check_solve = True	#If True, stop if you satisfy solution confition
         self.render = False        #If you want to see Cartpole learning, then change to True
 
         #Get size of state and action
@@ -70,15 +72,14 @@ class DQNAgent:
 
     #Get action from model using epsilon-greedy policy
     def get_action(self, state):
-###############################################################################
-###############################################################################
-        #Insert your e-greedy policy code here
-        #Tip 1: Use the random package to generate a random action.
-        #Tip 2: Use keras.model.predict() to compute Q-values from the state.
-        action = random.randrange(self.action_size)
+        Q = self.model.predict(state)
+        max_a = np.argmax(Q)
+        action_probs = np.dot([1]*self.action_size, \
+                       self.epsilon/self.action_size)
+        action_probs[max_a] += 1 - self.epsilon
+        action = np.random.choice(range(0,self.action_size), p=action_probs)
         return action
-###############################################################################
-###############################################################################
+
     #Save sample <s,a,r,s'> to the replay memory
     def append_sample(self, state, action, reward, next_state, done):
         self.memory.append((state, action, reward, next_state, done)) #Add sample to the end of the list
@@ -110,31 +111,31 @@ class DQNAgent:
         #Insert your Q-learning code here
         #Tip 1: Observe that the Q-values are stored in the variable target
         #Tip 2: What is the Q-value of the action taken at the last state of the episode?
-        for i in range(self.batch_size): #For every batch
-            target[i][action[i]] = random.randint(0,1)
-###############################################################################
-###############################################################################
+        for i in range(self.batch_size): #For every sample in the batch
+            if done[i]:
+                target[i][action[i]] = reward[i]
+            else:
+                target[i][action[i]] = reward[i] + \
+                self.discount_factor * np.argmax(target_val[i])
 
         #Train the inner loop network
         self.model.fit(update_input, target, batch_size=self.batch_size,
                        epochs=1, verbose=0)
         return
+
     #Plots the score per episode as well as the maximum q value per episode, averaged over precollected states.
     def plot_data(self, episodes, scores, max_q_mean):
         pylab.figure(0)
         pylab.plot(episodes, max_q_mean, 'b')
         pylab.xlabel("Episodes")
         pylab.ylabel("Average Q Value")
-        pylab.savefig("qvalues.png")
+        pylab.savefig(f"cartpole/plots/qvalues{time()}.png")
 
         pylab.figure(1)
         pylab.plot(episodes, scores, 'b')
         pylab.xlabel("Episodes")
         pylab.ylabel("Score")
-        pylab.savefig("scores.png")
-
-###############################################################################
-###############################################################################
+        pylab.savefig(f"cartpole/plots/scores{time()}.png")
 
 if __name__ == "__main__":
     #For CartPole-v0, maximum episode length is 200
@@ -173,6 +174,7 @@ if __name__ == "__main__":
         state = np.reshape(state, [1, state_size]) #Reshape state so that to a 1 by state_size two-dimensional array ie. [x_1,x_2] to [[x_1,x_2]]
         #Compute Q values for plotting
         tmp = agent.model.predict(test_states)
+
         max_q[e][:] = np.max(tmp, axis=1)
         max_q_mean[e] = np.mean(max_q[e][:])
 

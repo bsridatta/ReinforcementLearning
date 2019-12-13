@@ -3,6 +3,8 @@ import gym
 import pylab
 import random
 import numpy as np
+
+from time import time
 from collections import deque
 from keras.layers import Dense
 from keras.optimizers import Adam
@@ -22,8 +24,8 @@ class DQNAgent:
         self.state_size = state_size
         self.action_size = action_size
 
-################################################################################
-################################################################################
+       # Modify here
+
         #Set hyper parameters for the DQN. Do not adjust those labeled as Fixed.
         self.discount_factor = 0.95
         self.learning_rate = 0.005
@@ -32,8 +34,6 @@ class DQNAgent:
         self.memory_size = 1000
         self.train_start = 1000 #Fixed
         self.target_update_frequency = 1
-################################################################################
-################################################################################
 
         #Number of test states for Q value plots
         self.test_state_no = 10000
@@ -127,13 +127,16 @@ class DQNAgent:
         pylab.plot(episodes, max_q_mean, 'b')
         pylab.xlabel("Episodes")
         pylab.ylabel("Average Q Value")
-        pylab.savefig("qvalues.png")
+        pylab.savefig(f"cartpole/plots/qvalues{time()}.png")
 
         pylab.figure(1)
         pylab.plot(episodes, scores, 'b')
         pylab.xlabel("Episodes")
         pylab.ylabel("Score")
-        pylab.savefig("scores.png")
+        pylab.savefig(f"cartpole/plots/scores{time()}.png")
+
+###############################################################################
+###############################################################################
 
 if __name__ == "__main__":
     #For CartPole-v0, maximum episode length is 200
