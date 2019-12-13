@@ -12,14 +12,14 @@ from keras.layers import Dense
 from keras.optimizers import Adam
 from keras.models import Sequential
 
-EPISODES = 10 #Maximum number of episodes
+EPISODES = 1000 #Maximum number of episodes
 
 #DQN Agent for the Cartpole
 #Q function approximation with NN, experience replay, and target network
 class DQNAgent:
     #Constructor for the agent (invoked when DQN is first called in main)
     def __init__(self, state_size, action_size, hparams):
-        self.check_solve = True	#If True, stop if you satisfy solution confition
+        self.check_solve = False    #If True, stop if you satisfy solution confition
         self.render = False        #If you want to see Cartpole learning, then change to True
 
         #Get size of state and action
@@ -52,7 +52,7 @@ class DQNAgent:
     #State is the input and the Q Values are the output.
     def build_model(self):
         model = Sequential()
-        model.add(Dense(16, input_dim=self.state_size, activation='relu',
+        model.add(Dense(self.neurons, input_dim=self.state_size, activation='relu',
                         kernel_initializer='he_uniform'))
         model.add(Dense(self.action_size, activation='linear',
                         kernel_initializer='he_uniform'))
@@ -116,7 +116,7 @@ class DQNAgent:
     #Plots the score per episode as well as the maximum q value per episode, averaged over precollected states.
     def log_data(self, episodes, scores, max_q_mean):
 
-        name = f'neurons: {self.neurons}' 
+        name = f'_neurons_{self.neurons}' 
 
         pylab.figure(0)
         pylab.plot(episodes, max_q_mean, 'b')
@@ -136,7 +136,7 @@ if __name__ == "__main__":
     
     parser = ArgumentParser()
 
-    parser.add_argument("--neurons", type=float, default=16)
+    parser.add_argument("--neurons", type=int, default=16)
     parser.add_argument("--layers", type=int, default=1)
 
     parser.add_argument("--discount", type=float, default=0.95)
