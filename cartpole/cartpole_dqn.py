@@ -4,8 +4,10 @@ import pylab
 import random
 import numpy as np
 
+from argparse import ArgumentParser
 from time import time
 from collections import deque
+
 from keras.layers import Dense
 from keras.optimizers import Adam
 from keras.models import Sequential
@@ -16,7 +18,7 @@ EPISODES = 10 #Maximum number of episodes
 #Q function approximation with NN, experience replay, and target network
 class DQNAgent:
     #Constructor for the agent (invoked when DQN is first called in main)
-    def __init__(self, state_size, action_size):
+    def __init__(self, state_size, action_size, hparams):
         self.check_solve = True	#If True, stop if you satisfy solution confition
         self.render = False        #If you want to see Cartpole learning, then change to True
 
@@ -25,14 +27,14 @@ class DQNAgent:
         self.action_size = action_size
 
         #Set hyper parameters for the DQN. Do not adjust those labeled as Fixed.
-        self.discount_factor = 0.95
-        self.learning_rate = 0.005
+        self.discount_factor = hparams.discount
+        self.learning_rate = hparams.lr
         self.epsilon = 0.02 #Fixed
         self.batch_size = 32 #Fixed
-        self.memory_size = 1000
+        self.memory_size = hparams.memory
         self.train_start = 1000 #Fixed
-        self.target_update_frequency = 1
-
+        self.target_update_frequency = hparams.frequency
+        self.neurons = hparams.neurons
         #Number of test states for Q value plots
         self.test_state_no = 10000
 
@@ -127,9 +129,21 @@ class DQNAgent:
         pylab.savefig(f"cartpole/plots/scores{time()}.png")
         np.savez(f"cartpole/pickles/scores{time()}.npz", scores)
 
-        h_params = []
-
 if __name__ == "__main__":
+    
+    parser = ArgumentParser()
+
+    parser.add_argument("--neurons", type=float, default=16)
+    parser.add_argument("--layers", type=int, default=1)
+
+    parser.add_argument("--discount", type=float, default=0.95)
+    parser.add_argument("--memory", type=int, default=1000)
+    parser.add_argument("--lr", type=float, default=0.005)
+
+    parser.add_argument("--frequency", type=int, default=1)
+
+    hparams = parser.parse_args()
+    
     #For CartPole-v0, maximum episode length is 200
     env = gym.make('CartPole-v0') #Generate Cartpole-v0 environment object from the gym library
     #Get state and action sizes from the environment
@@ -137,7 +151,7 @@ if __name__ == "__main__":
     action_size = env.action_space.n
 
     #Create agent, see the DQNAgent __init__ method for details
-    agent = DQNAgent(state_size, action_size)
+    agent = DQNAgent(state_size, action_size, hparams)
 
     #Collect test states for plotting Q values using uniform random policy
     test_states = np.zeros((agent.test_state_no, state_size))
