@@ -32,7 +32,7 @@ class DQNAgent:
         self.epsilon = 0.02 #Fixed
         self.batch_size = 32 #Fixed
         self.memory_size = hparams.memory
-        self.train_start = 1000 #Fixed
+        self.train_start = self.memory_size #Fixed
         self.target_update_frequency = hparams.frequency
         self.neurons = hparams.neurons
         self.layers = hparams.layers
@@ -123,7 +123,7 @@ class DQNAgent:
     #Plots the score per episode as well as the maximum q value per episode, averaged over precollected states.
     def log_data(self, episodes, scores, max_q_mean):
 
-        name = f'_lr_{self.lr}' 
+        name = f'_freq_{self.target_update_frequency}' 
 
         pylab.figure(0)
         pylab.plot(episodes, max_q_mean, 'b')
