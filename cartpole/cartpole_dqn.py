@@ -19,7 +19,7 @@ EPISODES = 1000 #Maximum number of episodes
 class DQNAgent:
     #Constructor for the agent (invoked when DQN is first called in main)
     def __init__(self, state_size, action_size, hparams):
-        self.check_solve = False    #If True, stop if you satisfy solution confition
+        self.check_solve = True    #If True, stop if you satisfy solution confition
         self.render = False        #If you want to see Cartpole learning, then change to True
 
         #Get size of state and action
@@ -123,7 +123,7 @@ class DQNAgent:
     #Plots the score per episode as well as the maximum q value per episode, averaged over precollected states.
     def log_data(self, episodes, scores, max_q_mean):
 
-        name = f'_freq_{self.target_update_frequency}' 
+        name = f'_best_{self.target_update_frequency}' 
 
         pylab.figure(0)
         pylab.plot(episodes, max_q_mean, 'b')
@@ -182,6 +182,8 @@ if __name__ == "__main__":
             test_states[i] = state
             state = next_state
 
+    mean_score = 0
+    max_mean_score = 0
     scores, episodes = [], [] #Create dynamically growing score and episode counters
     for e in range(EPISODES):
         done = False
@@ -218,14 +220,25 @@ if __name__ == "__main__":
                 scores.append(score)
                 episodes.append(e)
 
-                print("episode:", e, "  score:", score," q_value:", max_q_mean[e],"  memory length:",
+                if agent.check_solve:
+                    print("episode:", e, "  score:", score," q_value:", max_q_mean[e],"  memory length:",
+                      len(agent.memory), " mean_score:", mean_score)
+                else:
+                    print("episode:", e, "  score:", score," q_value:", max_q_mean[e],"  memory length:",
                       len(agent.memory))
 
                 # if the mean of scores of last 100 episodes is bigger than 195
                 # stop training
+                mean_score = np.mean(scores[-min(100, len(scores)):])
                 if agent.check_solve:
+                    if mean_score > max_mean_score:
+                        max_mean_score = mean_score
                     if np.mean(scores[-min(100, len(scores)):]) >= 195:
                         print("solved after", e-100, "episodes")
                         agent.log_data(episodes,scores,max_q_mean[:e+1])
                         sys.exit()
+
     agent.log_data(episodes,scores,max_q_mean)
+
+    if agent.check_solve:
+        print(f"Max Mean Score for this config: {max_mean_score}")
